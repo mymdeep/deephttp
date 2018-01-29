@@ -1,7 +1,12 @@
 package com.deep.http.interfaces;
 
+import java.io.BufferedReader;
+import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.net.URLEncoder;
 import java.util.HashMap;
 import java.util.Map;
@@ -37,6 +42,12 @@ public abstract class ARequest {
         return Method;
     }
 
+    public void setParams(HashMap<String, Object> params) {
+        this.params = params;
+    }
+    public void addParam(String key,Object value){
+        params.put(key,value);
+    }
     public String getParamUrl(){
         if (TextUtils.isEmpty(baseUrl) || params == null || params.size() == 0) {
             return "";
@@ -68,7 +79,12 @@ public abstract class ARequest {
 
         return sb.substring(0, sb.length() - 1);
     }
-    public abstract HashMap<String, Object> getParam();
+    public  HashMap<String, Object> getParam(){
+        return params;
+    }
+    public HttpURLConnection openUrlConnection(URL url){
+       return null;
+    }
     public abstract Map<String, FilePair> getFilePair();
     public  Map<String, String> getHeaders(){
         return headers;
@@ -115,8 +131,32 @@ public abstract class ARequest {
         }
 
     }
-
+    public   String convertStreamToString(InputStream is) {
+        InputStreamReader inputStreamReader = new InputStreamReader(is);
+        BufferedReader reader = new BufferedReader(inputStreamReader, 512);
+        StringBuilder stringBuilder = new StringBuilder();
+        try {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                stringBuilder.append(line + "\n");
+            }
+        } catch (IOException e) {
+            return null;
+        } finally {
+            closeQuietly(inputStreamReader);
+            closeQuietly(reader);
+        }
+        return stringBuilder.toString();
+    }
     public void setData(byte[] data) {
         this.data = data;
+    }
+    private static void closeQuietly(Closeable io) {
+        try {
+            if (io != null) {
+                io.close();
+            }
+        } catch (IOException e) {
+        }
     }
 }

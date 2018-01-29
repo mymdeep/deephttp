@@ -1,11 +1,8 @@
 package com.deep.http;
 
-import java.io.BufferedReader;
-import java.io.Closeable;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
@@ -53,9 +50,13 @@ public class Client {
         HttpURLConnection httpURLConnection = null;
         int code = Constants.ERRORCODE;
         String message;
+        String urlStr = request.getParamUrl();
+        if (TextUtils.isEmpty(urlStr)){
+            return createResponse(Constants.NOURL,code,clazz);
+        }
         try {
-            URL url = new URL(request.getParamUrl());
-            httpURLConnection = openUrlConnection(url);
+            URL url = new URL(urlStr);
+            httpURLConnection = openUrlConnection(url,request);
             normalSetting(httpURLConnection, Method.GET, request);
             if (httpURLConnection == null) {
                 return createResponse(Constants.NOHHTTP,code,clazz);
@@ -67,19 +68,17 @@ public class Client {
                 InputStream stream = null;
                 try {
                     stream = request.wrapStream(contentEncoding, inputStream);
-                    String data = convertStreamToString(stream);
+                    String data = request.convertStreamToString(stream);
                     return createResponse(data,responseCode,clazz);
                 } catch (IOException e) {
-                    Logger.error("error:"+e.getMessage());
+                    Logger.error("get error1:"+e.getMessage());
                     return createResponse(e.getMessage(),code,clazz);
-                } finally {
-                    closeQuietly(stream);
-                }
+                } 
 
             }
             return createResponse("",responseCode,clazz);
         } catch (IOException e) {
-            Logger.error("error:"+e.getMessage());
+            Logger.error("get error2:"+e.getMessage());
             message = e.getMessage();
         }
         return createResponse(message,code,clazz);
@@ -135,32 +134,16 @@ public class Client {
     }
 
 
-    private  String convertStreamToString(InputStream is) {
-        InputStreamReader inputStreamReader = new InputStreamReader(is);
-        BufferedReader reader = new BufferedReader(inputStreamReader, 512);
-        StringBuilder stringBuilder = new StringBuilder();
-        try {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                stringBuilder.append(line + "\n");
-            }
-        } catch (IOException e) {
-            return null;
-        } finally {
-            closeQuietly(inputStreamReader);
-            closeQuietly(reader);
-        }
-        return stringBuilder.toString();
-    }
 
-    private static void closeQuietly(Closeable io) {
-        try {
-            if (io != null) {
-                io.close();
-            }
-        } catch (IOException e) {
-        }
-    }
+
+    //private static void closeQuietly(Closeable io) {
+    //    try {
+    //        if (io != null) {
+    //            io.close();
+    //        }
+    //    } catch (IOException e) {
+    //    }
+    //}
 
 
     public  <T extends AResponse> T post(ARequest request, Class<T> clazz) {
@@ -171,9 +154,13 @@ public class Client {
         URL url;
         int code = Constants.ERRORCODE;
         String message;
+        String urlStr = request.getBaseUrl();
+        if (TextUtils.isEmpty(urlStr)){
+            return createResponse(Constants.NOURL,code,clazz);
+        }
         try {
-            url = new URL(request.getBaseUrl());
-            httpURLConnection = openUrlConnection(url);
+            url = new URL(urlStr);
+            httpURLConnection = openUrlConnection(url,request);
             normalSetting(httpURLConnection, Method.POST,request);
             if (request.Content_Type.equals(Constants.MULTIPART)){
                 if (request.getParam() != null && request.getParam().size() > 0) {
@@ -202,7 +189,7 @@ public class Client {
                 inputStream = httpURLConnection.getInputStream();
                 String contentEncoding = httpURLConnection.getContentEncoding();
                 InputStream stream = request.wrapStream(contentEncoding, inputStream);
-                String data = convertStreamToString(stream);
+                String data = request.convertStreamToString(stream);
                 Logger.single(0,"data="+data);
                 return createResponse(data,responseCode,clazz);
 
@@ -215,7 +202,10 @@ public class Client {
         }
         return createResponse(message, Constants.ERRORCODE,clazz);
     }
-    private static HttpURLConnection openUrlConnection(URL url) throws IOException {
+    private static HttpURLConnection openUrlConnection(URL url,ARequest request) throws IOException {
+        if (request.openUrlConnection(url)!=null){
+            return request.openUrlConnection(url);
+        }
         String scheme = url.getProtocol();
         boolean isHttpsRequest = false;
         if ("https".equals(scheme)) {
@@ -223,7 +213,7 @@ public class Client {
         }
         if (isHttpsRequest) {
             return (HttpsURLConnection) (url).openConnection();
-            // TODO 处理https证书 1,需要测试https请求;2如需设置证书，需验证是否会对其它https请求有影响
+
 
         } else {
             return (HttpURLConnection) (url).openConnection();

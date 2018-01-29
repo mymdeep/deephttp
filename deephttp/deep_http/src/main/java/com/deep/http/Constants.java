@@ -7,6 +7,7 @@ package com.deep.http;
 public class Constants {
     public static final int ERRORCODE = -111;
     public static final String NOHHTTP ="httpURLConnection = null";
+    public static final String NOURL ="url为空";
     public static final String EMPTY_RESULT ="返回结果为空";
     public static final String WWW_FORM ="application/x-www-form-urlencoded";
 
